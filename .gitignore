@@ -84,3 +84,4 @@ venv/
 platform-tools
 platforms
 build-tools
+.knownPackages
