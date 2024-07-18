@@ -1,0 +1,80 @@
+*.iml
+.kotlin
+.gradle
+**/build/
+xcuserdata
+!src/**/build/
+local.properties
+.idea
+.DS_Store
+captures
+.externalNativeBuild
+.cxx
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+!*.xcodeproj/project.xcworkspace/
+!*.xcworkspace/contents.xcworkspacedata
+**/xcshareddata/WorkspaceSettings.xcsettings
+
+# Ignore IntelliJ IDEA project files
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Ignore IntelliJ IDEA specific files
+out/
+.idea_modules/
+.idea/*
+
+# Ignore Gradle files
+.gradle/
+build/
+local.properties
+
+# Ignore Kotlin/Java build output directories
+/build/
+*/build/
+*.class
+*.jar
+*.war
+*.ear
+
+# Ignore Android specific files
+/app/build/
+*/app/build/
+
+# Ignore iOS specific files
+ios/Pods/
+ios/Podfile.lock
+ios/build/
+ios/DerivedData/
+
+# Ignore web specific files
+web/build/
+
+# Ignore generated files by Kotlin compiler
+*.kotlin_metadata
+
+# Ignore logs and temp files
+*.log
+*.tmp
+*.temp
+
+# Ignore additional system files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+*.swp
+*.swo
+
+# Ignore caches
+.cache/
+
+# Ignore test reports
+/test-results/
+
+# Ignore virtual environment files
+venv/
+.env/
