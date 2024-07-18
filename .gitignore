@@ -78,3 +78,9 @@ Desktop.ini
 # Ignore virtual environment files
 venv/
 .env/
+
+# devices
+
+platform-tools
+platforms
+build-tools
