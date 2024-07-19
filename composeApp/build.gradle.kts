@@ -19,6 +19,7 @@ repositories {
     maven("https://maven.pkg.jetbrains.space/kotlin/p/kotlin/dev")
     maven("https://maven.pkg.jetbrains.space/kotlin/p/kotlin/bootstrap")
     maven("https://maven.pkg.jetbrains.space/kotlin/p/wasm/experimental")
+    maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
 }
 
 kotlin {
@@ -65,6 +66,7 @@ kotlin {
             implementation("io.ktor:ktor-client-okhttp:3.0.0-wasm2")
             implementation(libs.androidx.ui.tooling.preview)
             implementation(libs.androidx.runtime.livedata)
+            implementation(libs.androidx.navigation.compose)
         }
         commonMain.dependencies {
             implementation(compose.runtime)
@@ -80,7 +82,12 @@ kotlin {
             implementation(libs.ktor.client.serialization)
             implementation(libs.bundles.ktor.common)
             implementation(libs.kotlinx.datetime)
+
         }
+
+        wasmJsMain.dependencies {
+        }
+
     }
 }
 
@@ -123,5 +130,7 @@ android {
 }
 dependencies {
     implementation(libs.androidx.core.i18n)
+    implementation(libs.kotlinx.html)
+    implementation("org.jetbrains.compose.web:web-core:1.0.0")
 }
 

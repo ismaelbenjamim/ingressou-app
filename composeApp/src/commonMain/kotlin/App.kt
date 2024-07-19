@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.TextUnit
 import io.ktor.http.HttpHeaders.Date
 
+
 import kotlinx.datetime.*
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -291,7 +292,7 @@ fun PurchaseStepOne(
         //val cpfRegex = Regex("^[0-9]{11}\$")
         val nameRegex = Regex("^[\\p{L} ]+\$")
         val birthDateRegex = Regex("^\\d{2}/\\d{2}/\\d{4}\$")
-        val validMaritalStatuses = listOf("Solteiro", "Enrolado", "Casado")
+        val validMaritalStatuses = listOf("Solteiro(a)", "Comprometido(a)")
 
         return when {
             /*newUser.cpf.isEmpty() -> {
@@ -306,26 +307,32 @@ fun PurchaseStepOne(
                 onUserChange(newUser.copy(errorMessage = "Nome não pode estar vazio"))
                 false
             }
+
             !nameRegex.matches(newUser.name) -> {
                 onUserChange(newUser.copy(errorMessage = "Nome inválido"))
                 false
             }
+
             newUser.birthDate.isEmpty() -> {
                 onUserChange(newUser.copy(errorMessage = "Data de nascimento não pode estar vazia"))
                 false
             }
+
             !birthDateRegex.matches(newUser.birthDate) -> {
                 onUserChange(newUser.copy(errorMessage = "Data de nascimento inválida"))
                 false
             }
+
             newUser.maritalStatus.isEmpty() -> {
-                onUserChange(newUser.copy(errorMessage = "Estado Civil não pode estar vazio"))
+                onUserChange(newUser.copy(errorMessage = "Situação não pode estar vazio"))
                 false
             }
+
             !validMaritalStatuses.contains(newUser.maritalStatus) -> {
-                onUserChange(newUser.copy(errorMessage = "Estado Civil inválido"))
+                onUserChange(newUser.copy(errorMessage = "Situação inválido"))
                 false
             }
+
             else -> true
         }
     }
@@ -336,6 +343,7 @@ fun PurchaseStepOne(
                 onUserChange(newUser.copy(errorMessage = "Adicione ingressos na lista para poder avançar"))
                 false
             }
+
             else -> true
         }
     }
@@ -541,8 +549,8 @@ fun DateInputField(
 @Composable
 fun UserForm(user: User, onUserChange: (User) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
-    var selectedOption by remember { mutableStateOf("Solteiro") }
-    val options = listOf("Solteiro", "Enrolado", "Casado")
+    var selectedOption by remember { mutableStateOf("Solteiro(a)") }
+    val options = listOf("Solteiro(a)", "Comprometido(a)")
 
     Column {
         /*TextField(
@@ -576,7 +584,7 @@ fun UserForm(user: User, onUserChange: (User) -> Unit) {
             value = user.maritalStatus,
             onValueChange = { },
             readOnly = true,
-            label = { Text("Estado Civil") },
+            label = { Text("Situação") },
             trailingIcon = {
                 IconButton(onClick = { expanded = !expanded }) {
                     Icon(
@@ -635,10 +643,14 @@ fun UserCard(user: User, onRemove: () -> Unit) {
                 //Text(text = "CPF: ${user.cpf}", color = Color.White)
                 Text(text = "Nome: ${user.name}", color = Color.White)
                 Text(text = "Data de nascimento: ${user.birthDate}", color = Color.White)
-                Text(text = "Estado Civil: ${user.maritalStatus}", color = Color.White)
+                Text(text = "Situação: ${user.maritalStatus}", color = Color.White)
             }
             IconButton(onClick = onRemove) {
-                Icon(imageVector = Icons.Default.Delete, contentDescription = "Remover usuário", tint = MaterialTheme.colorScheme.primaryContainer)
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Remover usuário",
+                    tint = MaterialTheme.colorScheme.primaryContainer
+                )
             }
         }
     }
@@ -651,35 +663,78 @@ fun PurchaseStepTwo(users: List<User>, onBack: () -> Unit, onNext: () -> Unit) {
             modifier = Modifier
                 .padding(16.dp)
                 .then(getResponsiveMaxWidth())
-                .wrapContentHeight()
+                .height(600.dp) // max card
         ) {
             Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
                 modifier = Modifier
                     .padding(16.dp)
                     .fillMaxWidth()
+                    .fillMaxHeight()
             ) {
                 Text(
                     text = "Confirmação das informações",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Normal
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                users.forEach { user ->
-                    Text(text = "CPF: ${user.id}, Nome: ${user.name}, Idade: ${user.birthDate}, Estado Civil: ${user.maritalStatus}")
-                    Spacer(modifier = Modifier.height(8.dp))
+                HorizontalDivider(color = Color.LightGray)
+                Spacer(modifier = Modifier.height(16.dp))
+                LazyColumn(
+                    modifier = Modifier.weight(1f) // Preenche o espaço restante
+                ) {
+                    items(users) { user ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            elevation = 4.dp,
+                            backgroundColor = MaterialTheme.colorScheme.primary,
+                            contentColor = Color.White
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                modifier = Modifier.padding(16.dp)
+                            ) {
+                                Column {
+                                    Text(text = "#${user.id}", color = Color.White, fontWeight = FontWeight.Bold)
+                                    Text(text = "Nome: ${user.name}", color = Color.White)
+                                    Text(text = "Data de nascimento: ${user.birthDate}", color = Color.White)
+                                    Text(text = "Situação: ${user.maritalStatus}", color = Color.White)
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
                 }
+
+
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    IconButton(onClick = onBack) {
-                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Voltar")
+                    IconButton(
+                        onClick = onBack,
+                        modifier = Modifier
+                            .background(MaterialTheme.colorScheme.primary, shape = CircleShape)
+                            .size(48.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            tint = Color.White,
+                            contentDescription = "Voltar"
+                        )
                     }
-                    IconButton(onClick = onNext) {
-                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Avançar")
+                    IconButton(
+                        onClick = onNext,
+                        modifier = Modifier
+                            .background(MaterialTheme.colorScheme.primary, shape = CircleShape)
+                            .size(48.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            tint = Color.White,
+                            contentDescription = "Avançar"
+                        )
                     }
                 }
             }
@@ -704,7 +759,7 @@ fun PurchaseStepThree(users: List<User>, onBack: () -> Unit) {
                     .fillMaxWidth()
             ) {
                 Text(
-                    text = "Etapa 3: Pagamento",
+                    text = "Pagamento",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
@@ -721,10 +776,21 @@ fun PurchaseStepThree(users: List<User>, onBack: () -> Unit) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
                 ) {
-                    IconButton(onClick = onBack) {
-                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Voltar")
+                    IconButton(
+                        onClick = onBack,
+                        modifier = Modifier
+                            .background(MaterialTheme.colorScheme.primary, shape = CircleShape)
+                            .size(48.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            tint = Color.White,
+                            contentDescription = "Voltar"
+                        )
                     }
                     Button(onClick = { /* Implementar pagamento */ }, modifier = Modifier.fillMaxWidth()) {
                         Text("Pagar")
