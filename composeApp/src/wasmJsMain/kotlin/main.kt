@@ -4,7 +4,8 @@ import kotlinx.browser.document
 
 @OptIn(ExperimentalComposeUiApi::class)
 fun main() {
+    val sessionManager = WebSessionManager()
     ComposeViewport(document.body!!) {
-        App()
+        App(sessionManager)
     }
 }

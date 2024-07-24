@@ -1,5 +1,4 @@
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.Card
@@ -19,7 +18,6 @@ import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import org.jetbrains.compose.ui.tooling.preview.Preview
-
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.platform.LocalDensity
@@ -27,57 +25,124 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.*
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusEvent
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.input.*
-import androidx.compose.ui.text.intl.Locale
-import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.TextUnit
-import io.ktor.http.HttpHeaders.Date
 
+import androidx.compose.ui.text.input.*
+import androidx.compose.ui.unit.sp
+import ingressouapp.composeapp.generated.resources.Res
+import ingressouapp.composeapp.generated.resources.logo
+import ingressouapp.composeapp.generated.resources.qrcode
+import kotlinx.coroutines.delay
 
 import kotlinx.datetime.*
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import org.jetbrains.compose.resources.painterResource
+
+@Serializable
+enum class ResponsiveSize(val size: Float) {
+    SM(0.3f),
+    MD(0.5f),
+    LG(0.8f)
+}
 
 @Composable
-fun getResponsiveMaxWidth(): Modifier {
+fun getResponsiveMaxWidth(responsiveSize: ResponsiveSize): Modifier {
     val isWeb = LocalDensity.current.density < 2.0
     val cardWidthModifier = if (isWeb) {
-        Modifier.fillMaxWidth(0.3f)
+        Modifier.fillMaxWidth(responsiveSize.size)
     } else {
         Modifier.fillMaxWidth()
     }
     return cardWidthModifier
 }
 
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TopBar(onLogout: () -> Unit, onScreen: (currentScreen: String) -> Unit, sessionManager: SessionManager) {
+    TopAppBar(
+        title = { Text("Ingressou") },
+        actions = {
+            if (sessionManager.getUserSession().isAdmin) {
+                IconButton(onClick = { onScreen("usuarios") }) {
+                    Icon(Icons.Filled.Person, contentDescription = "Usuários")
+                }
+                IconButton(onClick = { onScreen("ingressos") }) {
+                    Icon(Icons.Filled.Star, contentDescription = "Ingressos")
+                }
+                IconButton(onClick = { onScreen("validar_ingresso") }) {
+                    Icon(Icons.Filled.Check, contentDescription = "Validar Ingresso")
+                }
+            } else {
+                IconButton(onClick = { onScreen("meus_ingressos") }) {
+                    Icon(Icons.Filled.Star, contentDescription = "Meus Ingressos")
+                }
+                IconButton(onClick = { onScreen("comprar_ingressos") }) {
+                    Icon(Icons.Filled.ShoppingCart, contentDescription = "Comprar Ingressos")
+                }
+            }
+            IconButton(onClick = onLogout) {
+                Icon(imageVector = Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Sair")
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+            titleContentColor = Color.White,
+            actionIconContentColor = Color.White
+        )
+    )
+}
+
+
 @Composable
 @Preview
-fun App() {
-    var isLoggedIn by remember { mutableStateOf(false) }
-    var isAdmin by remember { mutableStateOf(false) }
+fun App(sessionManager: SessionManager) {
+    var userSession by remember { mutableStateOf(sessionManager.getUserSession()) }
+    var currentScreen by remember { mutableStateOf(if (userSession.isAdmin) "usuarios" else "comprar_ingressos") }
 
     MaterialTheme {
         Surface(modifier = Modifier.fillMaxSize(), color = Color.LightGray) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                if (userSession.token.isNotEmpty()) {
+                    TopBar(onLogout = {
+                        userSession = UserSession()
+                        sessionManager.saveUserSession(userSession)
+                    }, onScreen = { screen ->
+                        currentScreen = screen
+                    }, sessionManager)
+                }
+            }
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier.fillMaxSize()
             ) {
-                if (isLoggedIn) {
-                    if (isAdmin) {
-                        DashboardScreen()
+                if (userSession.token.isNotEmpty()) {
+                    if (userSession.isAdmin) {
+                        when (currentScreen) {
+                            "usuarios" -> UsuariosScreen(userSession)
+                            "ingressos" -> IngressosScreen(userSession)
+                            "validar_ingresso" -> ValidarIngressoScreen(userSession)
+                        }
                     } else {
-                        PurchaseScreen()
+                        when (currentScreen) {
+                            "meus_ingressos" -> MeusIngressosScreen(userSession)
+                            "comprar_ingressos" -> PurchaseScreen(userSession)
+                        }
                     }
                 } else {
-                    LoginScreen(onLoginSuccess = { isAdminUser ->
-                        isLoggedIn = true
-                        isAdmin = isAdminUser
+                    LoginScreen(userAuthentication = { authentication: UserSession ->
+                        userSession = authentication
+                        sessionManager.saveUserSession(authentication)
                     })
                 }
             }
@@ -87,7 +152,7 @@ fun App() {
 
 @Composable
 @Preview
-fun LoginScreen(onLoginSuccess: (Boolean) -> Unit) {
+fun LoginScreen(userAuthentication: (UserSession) -> Unit) {
     var cpf by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isFirstAccess by remember { mutableStateOf(false) }
@@ -100,7 +165,7 @@ fun LoginScreen(onLoginSuccess: (Boolean) -> Unit) {
     Card(
         modifier = Modifier
             .padding(16.dp)
-            .then(getResponsiveMaxWidth())
+            .then(getResponsiveMaxWidth(ResponsiveSize.SM))
             .wrapContentHeight()
     ) {
         Column(
@@ -110,7 +175,14 @@ fun LoginScreen(onLoginSuccess: (Boolean) -> Unit) {
                 .padding(16.dp)
                 .fillMaxWidth()
         ) {
-            Text(text = "Ingressou", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Image(painterResource(Res.drawable.logo), "logo", modifier = Modifier.width(300.dp))
+            }
             Spacer(modifier = Modifier.height(16.dp))
             Text(text = "Login", style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(16.dp))
@@ -132,10 +204,11 @@ fun LoginScreen(onLoginSuccess: (Boolean) -> Unit) {
                     Button(
                         onClick = {
                             coroutineScope.launch {
-                                validateCPF(cpf) { result, isFirst ->
-                                    if (result) {
-                                        isFirstAccess = isFirst
+                                validateCPF(cpf) { result: CpfValidationDTO ->
+                                    if (result.validate) {
+                                        isFirstAccess = result.firstAccess
                                         isStepOneComplete = true
+                                        errorMessage = ""
                                     } else {
                                         errorMessage = "CPF inválido"
                                     }
@@ -184,9 +257,25 @@ fun LoginScreen(onLoginSuccess: (Boolean) -> Unit) {
                             onClick = {
                                 if (password == confirmPassword) {
                                     coroutineScope.launch {
-                                        performRegistration(email, password) { success ->
-                                            if (success) onLoginSuccess(false)
-                                            else errorMessage = "Falha no registro"
+                                        performRegistration(cpf, email, password) { success ->
+                                            if (success) {
+                                                coroutineScope.launch {
+                                                    performLogin(cpf, password) { success, result: LoginResponse? ->
+                                                        if (success && result != null) {
+                                                            errorMessage = ""
+                                                            userAuthentication(
+                                                                UserSession(
+                                                                    isAdmin = result.tipo == UserType.ADMIN,
+                                                                    token = result.token,
+                                                                    isAuthenticated = true
+                                                                )
+                                                            )
+                                                        } else {
+                                                            errorMessage = "Login falhou"
+                                                        }
+                                                    }
+                                                }
+                                            } else errorMessage = "Falha no registro"
                                         }
                                     }
                                 } else {
@@ -218,9 +307,16 @@ fun LoginScreen(onLoginSuccess: (Boolean) -> Unit) {
                         Button(
                             onClick = {
                                 coroutineScope.launch {
-                                    performLogin(cpf, password) { success, isAdmin ->
-                                        if (success) {
-                                            onLoginSuccess(isAdmin)
+                                    performLogin(cpf, password) { success, result: LoginResponse? ->
+                                        if (success && result != null) {
+                                            errorMessage = ""
+                                            userAuthentication(
+                                                UserSession(
+                                                    isAdmin = result.tipo == UserType.ADMIN,
+                                                    token = result.token,
+                                                    isAuthenticated = true
+                                                )
+                                            )
                                         } else {
                                             errorMessage = "Login falhou"
                                         }
@@ -241,40 +337,32 @@ fun LoginScreen(onLoginSuccess: (Boolean) -> Unit) {
     }
 }
 
-@Composable
-fun DashboardScreen() {
-    // Implementação da tela de Dashboard
-    Text(text = "Bem-vindo ao Dashboard")
-}
 
 @Composable
 @Preview
-fun PurchaseScreen() {
+fun PurchaseScreen(userSession: UserSession) {
     var currentStep by remember { mutableStateOf(0) }
     var users by remember { mutableStateOf(listOf<User>()) }
     var newUser by remember { mutableStateOf(User()) }
 
-    MaterialTheme {
-        Surface(modifier = Modifier.fillMaxSize(), color = Color.LightGray) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier.fillMaxSize()
-            ) {
-                when (currentStep) {
-                    0 -> PurchaseStepOne(
-                        newUser = newUser,
-                        users = users,
-                        onUserChange = { newUser = it },
-                        onAddUser = { users = users + newUser; newUser = User() },
-                        onRemoveUser = { users = users - it },
-                        onNext = { if (users.isNotEmpty()) currentStep++ }
-                    )
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier.fillMaxSize()
+    ) {
+        when (currentStep) {
+            0 -> PurchaseStepOne(
+                newUser = newUser,
+                users = users,
+                onUserChange = { newUser = it },
+                onAddUser = { users = users + newUser; newUser = User() },
+                onRemoveUser = { users = users - it },
+                onNext = { if (users.isNotEmpty()) currentStep++ }
+            )
 
-                    1 -> PurchaseStepTwo(users = users, onBack = { currentStep-- }, onNext = { currentStep++ })
-                    2 -> PurchaseStepThree(users = users, onBack = { currentStep-- })
-                }
-            }
+            1 -> PurchaseStepTwo(users = users, onBack = { currentStep-- }, onNext = { currentStep++ })
+            2 -> PurchaseStepThree(users = users, userSession = userSession, onBack = { currentStep-- })
         }
+
     }
 }
 
@@ -287,22 +375,14 @@ fun PurchaseStepOne(
     onRemoveUser: (User) -> Unit,
     onNext: () -> Unit
 ) {
+    val usersState = remember { mutableStateListOf<User>().apply { addAll(users) } }
 
     fun validateForm(): Boolean {
-        //val cpfRegex = Regex("^[0-9]{11}\$")
         val nameRegex = Regex("^[\\p{L} ]+\$")
         val birthDateRegex = Regex("^\\d{2}/\\d{2}/\\d{4}\$")
         val validMaritalStatuses = listOf("Solteiro(a)", "Comprometido(a)")
 
         return when {
-            /*newUser.cpf.isEmpty() -> {
-                onUserChange(newUser.copy(errorMessage = "CPF não pode estar vazio"))
-                false
-            }
-            !cpfRegex.matches(newUser.cpf) -> {
-                onUserChange(newUser.copy(errorMessage = "CPF inválido"))
-                false
-            }*/
             newUser.name.isEmpty() -> {
                 onUserChange(newUser.copy(errorMessage = "Nome não pode estar vazio"))
                 false
@@ -339,7 +419,7 @@ fun PurchaseStepOne(
 
     fun validateListTickets(): Boolean {
         return when {
-            users.isEmpty() -> {
+            usersState.isEmpty() -> {
                 onUserChange(newUser.copy(errorMessage = "Adicione ingressos na lista para poder avançar"))
                 false
             }
@@ -348,11 +428,13 @@ fun PurchaseStepOne(
         }
     }
 
-    Surface(modifier = Modifier.fillMaxSize(), color = Color.LightGray) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier.fillMaxSize()
-        ) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(top = 65.dp)
+    ) {
+        if (LocalDensity.current.density < 2) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -361,123 +443,193 @@ fun PurchaseStepOne(
                 Card(
                     modifier = Modifier
                         .padding(16.dp)
-                        .then(getResponsiveMaxWidth())
-                        .height(400.dp) // max card
+                        .then(getResponsiveMaxWidth(ResponsiveSize.SM))
+                        .height(400.dp)
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .padding(16.dp)
-                            .fillMaxWidth()
-                            .fillMaxHeight()
-                    ) {
-                        Text(
-                            text = "Adicione os ingressos",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Normal
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        HorizontalDivider(color = Color.LightGray)
-                        Spacer(modifier = Modifier.height(16.dp))
-                        UserForm(user = newUser, onUserChange = onUserChange)
-
-                        Spacer(modifier = Modifier.weight(1f)) // Preenche o espaço restante disponível
-                        Row(
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 16.dp) // Adiciona espaçamento superior se necessário
-                        ) {
-                            IconButton(
-                                onClick = {
-                                    if (validateForm()) {
-                                        onUserChange(newUser.copy(id = users.size + 1))
-                                        onAddUser()
-                                    }
-                                },
-                                modifier = Modifier
-                                    .background(MaterialTheme.colorScheme.primary, shape = CircleShape)
-                                    .size(48.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Add,
-                                    contentDescription = "Adicionar usuário",
-                                    tint = Color.White
-                                )
-                            }
-                            IconButton(
-                                onClick = {
-                                    if (validateListTickets()) {
-                                        onNext()
-                                    }
-                                },
-                                modifier = Modifier
-                                    .background(MaterialTheme.colorScheme.primary, shape = CircleShape)
-                                    .size(48.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                    contentDescription = "Avançar",
-                                    tint = Color.White
-                                )
-                            }
-                        }
-                    }
+                    AdicioneIngressosContent(
+                        newUser = newUser,
+                        onUserChange = onUserChange,
+                        onAddUser = {
+                            onAddUser()
+                            usersState.add(newUser.copy(id = usersState.size + 1))
+                        },
+                        validateForm = ::validateForm,
+                        validateListTickets = ::validateListTickets,
+                        onNext = onNext,
+                        users = usersState
+                    )
                 }
                 Card(
                     modifier = Modifier
                         .padding(16.dp)
-                        .then(getResponsiveMaxWidth())
-                        .height(650.dp) // max card
+                        .then(getResponsiveMaxWidth(ResponsiveSize.SM))
+                        .height(650.dp)
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .padding(16.dp)
-                            .fillMaxWidth()
-                            .fillMaxHeight()
-                    ) {
-                        Text(
-                            text = "Seus Ingressos",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Normal
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        HorizontalDivider(color = Color.LightGray)
-                        Spacer(modifier = Modifier.height(16.dp))
-                        LazyColumn(
-                            modifier = Modifier.weight(1f) // Preenche o espaço restante
-                        ) {
-                            items(users) { user ->
-                                UserCard(user = user, onRemove = { onRemoveUser(user) })
-                                Spacer(modifier = Modifier.height(8.dp))
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(16.dp))
-                        HorizontalDivider(color = Color.LightGray)
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = "Total",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Normal
-                            )
-                            Text(
-                                text = "R$${users.size * 100},00",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Normal
-                            )
-                        }
-                    }
+                    SeusIngressosContent(users = usersState, onRemoveUser = { user ->
+                        onRemoveUser(user)
+                        usersState.remove(user)
+                    })
                 }
-
+            }
+        } else {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Card(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .fillMaxWidth()
+                        .height(400.dp)
+                ) {
+                    AdicioneIngressosContent(
+                        newUser = newUser,
+                        onUserChange = onUserChange,
+                        onAddUser = {
+                            onAddUser()
+                            usersState.add(newUser.copy(id = usersState.size + 1))
+                        },
+                        validateForm = ::validateForm,
+                        validateListTickets = ::validateListTickets,
+                        onNext = onNext,
+                        users = usersState
+                    )
+                }
+                Card(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .fillMaxWidth()
+                        .height(650.dp)
+                ) {
+                    SeusIngressosContent(users = usersState, onRemoveUser = { user ->
+                        onRemoveUser(user)
+                        usersState.remove(user)
+                    })
+                }
             }
         }
     }
 }
+
+
+@Composable
+fun AdicioneIngressosContent(
+    newUser: User,
+    onUserChange: (User) -> Unit,
+    onAddUser: () -> Unit,
+    validateForm: () -> Boolean,
+    validateListTickets: () -> Boolean,
+    onNext: () -> Unit,
+    users: List<User>
+) {
+    Column(
+        modifier = Modifier
+            .padding(16.dp)
+            .fillMaxWidth()
+            .fillMaxHeight()
+    ) {
+        Text(
+            text = "Adicione os ingressos",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Normal
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        HorizontalDivider(color = Color.LightGray)
+        Spacer(modifier = Modifier.height(16.dp))
+        UserForm(user = newUser, onUserChange = onUserChange)
+
+        Spacer(modifier = Modifier.weight(1f))
+        Row(
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp)
+        ) {
+            IconButton(
+                onClick = {
+                    if (validateForm()) {
+                        onUserChange(newUser.copy(id = users.size + 1))
+                        onAddUser()
+                    }
+                },
+                modifier = Modifier
+                    .background(MaterialTheme.colorScheme.primary, shape = CircleShape)
+                    .size(48.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Adicionar usuário",
+                    tint = Color.White
+                )
+            }
+            IconButton(
+                onClick = {
+                    if (validateListTickets()) {
+                        onNext()
+                    }
+                },
+                modifier = Modifier
+                    .background(MaterialTheme.colorScheme.primary, shape = CircleShape)
+                    .size(48.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = "Avançar",
+                    tint = Color.White
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun SeusIngressosContent(users: List<User>, onRemoveUser: (User) -> Unit) {
+    Column(
+        modifier = Modifier
+            .padding(16.dp)
+            .fillMaxWidth()
+            .fillMaxHeight()
+    ) {
+        Text(
+            text = "Seus Ingressos",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Normal
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        HorizontalDivider(color = Color.LightGray)
+        Spacer(modifier = Modifier.height(16.dp))
+        LazyColumn(
+            modifier = Modifier.weight(1f)
+        ) {
+            items(users) { user ->
+                UserCard(user = user, onRemove = { onRemoveUser(user) })
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        HorizontalDivider(color = Color.LightGray)
+        Spacer(modifier = Modifier.height(16.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Total",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Normal
+            )
+            Text(
+                text = "R$${users.size * 100},00",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Normal
+            )
+        }
+    }
+}
+
 
 fun Long.toBrazilianDateFormat(
     pattern: String = "dd/MM/yyyy"
@@ -553,16 +705,6 @@ fun UserForm(user: User, onUserChange: (User) -> Unit) {
     val options = listOf("Solteiro(a)", "Comprometido(a)")
 
     Column {
-        /*TextField(
-            value = user.cpf,
-            onValueChange = {
-                onUserChange(user.copy(cpf = it))
-            },
-            label = { Text("CPF") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(modifier = Modifier.height(8.dp))*/
         TextField(
             value = user.name,
             onValueChange = { onUserChange(user.copy(name = it)) },
@@ -640,7 +782,6 @@ fun UserCard(user: User, onRemove: () -> Unit) {
         ) {
             Column {
                 Text(text = "#${user.id}", color = Color.White, fontWeight = FontWeight.Bold)
-                //Text(text = "CPF: ${user.cpf}", color = Color.White)
                 Text(text = "Nome: ${user.name}", color = Color.White)
                 Text(text = "Data de nascimento: ${user.birthDate}", color = Color.White)
                 Text(text = "Situação: ${user.maritalStatus}", color = Color.White)
@@ -662,7 +803,7 @@ fun PurchaseStepTwo(users: List<User>, onBack: () -> Unit, onNext: () -> Unit) {
         Card(
             modifier = Modifier
                 .padding(16.dp)
-                .then(getResponsiveMaxWidth())
+                .then(getResponsiveMaxWidth(ResponsiveSize.SM))
                 .height(600.dp) // max card
         ) {
             Column(
@@ -742,13 +883,54 @@ fun PurchaseStepTwo(users: List<User>, onBack: () -> Unit, onNext: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PurchaseStepThree(users: List<User>, onBack: () -> Unit) {
+fun PurchaseStepThree(users: List<User>, userSession: UserSession, onBack: () -> Unit) {
+    var showDialog by remember { mutableStateOf(false) }
+    var dialogMessage by remember { mutableStateOf("") }
+    var isSuccess by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+
     Surface(color = Color.LightGray) {
+        if (showDialog) {
+            BasicAlertDialog(
+                onDismissRequest = { showDialog = false },
+                content = {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        if (isSuccess) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = "Ingresso pago com sucesso!",
+                                tint = Color.Green,
+                                modifier = Modifier.size(64.dp).align(Alignment.CenterHorizontally)
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Ocorreu algum problema no pagamento!",
+                                tint = Color.Red,
+                                modifier = Modifier.size(64.dp).align(Alignment.CenterHorizontally)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(text = dialogMessage, fontSize = 18.sp)
+                    }
+                },
+                modifier = Modifier
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color.White)
+                    .border(BorderStroke(1.dp, Color.Gray))
+                    .padding(16.dp)
+            )
+        }
         Card(
             modifier = Modifier
                 .padding(16.dp)
-                .then(getResponsiveMaxWidth())
+                .then(getResponsiveMaxWidth(ResponsiveSize.SM))
                 .wrapContentHeight()
         ) {
             Column(
@@ -784,7 +966,7 @@ fun PurchaseStepThree(users: List<User>, onBack: () -> Unit) {
                         onClick = onBack,
                         modifier = Modifier
                             .background(MaterialTheme.colorScheme.primary, shape = CircleShape)
-                            .size(48.dp)
+                            .size(36.dp)
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -792,12 +974,44 @@ fun PurchaseStepThree(users: List<User>, onBack: () -> Unit) {
                             contentDescription = "Voltar"
                         )
                     }
-                    Button(onClick = { /* Implementar pagamento */ }, modifier = Modifier.fillMaxWidth()) {
+                    Button(onClick = {
+                        coroutineScope.launch {
+                            val ingressos = mutableListOf<SimpleIngresso>()
+                            users.forEach { user ->
+                                ingressos.add(SimpleIngresso(user.name, user.birthDate, user.maritalStatus))
+                            }
+                            paymentIngresso(ingressos = PaymentIngressoRequest(ingressos), token = userSession.token) { result ->
+                                if (result) {
+                                    dialogMessage = "Ingresso pago e criado com sucesso!"
+                                    isSuccess = true
+                                } else {
+                                    dialogMessage = "Ocorreu algum problema no pagamento!"
+                                    isSuccess = false
+                                }
+                            }
+                            showDialog = true
+                            delay(2000)
+                            showDialog = false
+                        }
+                    }, modifier = Modifier.fillMaxWidth()) {
                         Text("Pagar")
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+fun MeusIngressosScreen(userSession: UserSession) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(top = 65.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Image(painterResource(Res.drawable.qrcode), "qrcode", modifier = Modifier.width(300.dp))
     }
 }
 
@@ -807,52 +1021,111 @@ val client = HttpClient {
     }
 }
 
-suspend fun validateCPF(cpf: String, callback: (Boolean, Boolean) -> Unit) {
+suspend fun validateCPF(cpf: String, callback: (CpfValidationDTO) -> Unit) {
     try {
-        // Código para validar o CPF
-        callback(true, true)
+        val response: HttpResponse = client.get("${ApiConfig.BASE_URL}/user/validate_cpf/${cpf}/") {
+            contentType(ContentType.Application.Json)
+        }
+        if (response.status == HttpStatusCode.OK) {
+            val result: CpfValidationResponse = response.body()
+            callback(
+                CpfValidationDTO(
+                    validate = true,
+                    firstAccess = result.firstAccess
+                )
+            )
+        } else {
+            callback(CpfValidationDTO(validate = false, firstAccess = false))
+        }
     } catch (e: Exception) {
-        callback(false, false)
+        callback(CpfValidationDTO(validate = false, firstAccess = false))
     }
 }
 
-suspend fun performRegistration(email: String, password: String, callback: (Boolean) -> Unit) {
+suspend fun performRegistration(cpf: String, email: String, password: String, callback: (Boolean) -> Unit) {
     try {
-        println(email)
-        println(password)
-        // Código para registrar o usuário
-        callback(true)
+        val response: HttpResponse = client.post("${ApiConfig.BASE_URL}/user/primeiro_acesso/") {
+            contentType(ContentType.Application.Json)
+            setBody(RegisterRequest(cpf, password, email))
+        }
+        if (response.status == HttpStatusCode.OK) {
+            callback(true)
+        } else {
+            callback(false)
+        }
     } catch (e: Exception) {
         callback(false)
     }
 }
 
-suspend fun performLogin(cpf: String, password: String, callback: (Boolean, Boolean) -> Unit) {
+suspend fun performLogin(cpf: String, password: String, callback: (Boolean, LoginResponse?) -> Unit) {
     try {
-        val response: HttpResponse = client.post("https://seuservidor.com/login") {
+        val response: HttpResponse = client.post("${ApiConfig.BASE_URL}/user/login/") {
             contentType(ContentType.Application.Json)
             setBody(LoginRequest(cpf, password))
         }
         if (response.status == HttpStatusCode.OK) {
-            val isAdmin = response.body<Boolean>()
-            callback(true, isAdmin)
+            val result: LoginResponse = response.body()
+            callback(true, result)
         } else {
-            callback(false, false)
+            callback(false, null)
         }
     } catch (e: Exception) {
-        callback(false, false)
+        callback(false, null)
     }
 }
+
+suspend fun validateQRCode(ingressoId: String, token: String, callback: (Boolean) -> Unit) {
+    try {
+        println(ingressoId)
+        val response: HttpResponse = client.post("${ApiConfig.BASE_URL}/ingresso/validate/") {
+            contentType(ContentType.Application.Json)
+            setBody(ValidateQRCodeRequest(ingressoId))
+            headers {
+                append("Authorization", "Token $token")
+            }
+        }
+        println(response.status)
+        if (response.status == HttpStatusCode.OK) {
+            callback(true)
+        } else {
+            callback(false)
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
+        callback(false)
+    }
+}
+
+suspend fun paymentIngresso(ingressos: PaymentIngressoRequest, token: String, callback: (Boolean) -> Unit) {
+    try {
+        println(ingressos)
+        val response: HttpResponse = client.post("${ApiConfig.BASE_URL}/ingresso/payment/") {
+            contentType(ContentType.Application.Json)
+            setBody(ingressos)
+            headers {
+                append("Authorization", "Token $token")
+            }
+        }
+        println(response.status)
+        if (response.status == HttpStatusCode.Created) {
+            callback(true)
+        } else {
+            callback(false)
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
+        callback(false)
+    }
+}
+
 
 @Serializable
 data class RegistrationRequest(val email: String, val password: String)
 
-@Serializable
-data class LoginRequest(val cpf: String, val password: String)
 
 data class User(
     val id: Int = 1,
-    //val cpf: String = "",
     val name: String = "",
     val birthDate: String = "",
     val maritalStatus: String = "",

@@ -11,6 +11,9 @@ androidx-espresso-core = "3.6.0"
 androidx-material = "1.12.0"
 androidx-test-junit = "1.2.0"
 compose-plugin = "1.6.11"
+dataTable = "0.5.1"
+foundationWasmJs = "1.6.11"
+io-ktor-ktorClientCio = "2.3.12"
 junit = "4.13.2"
 kotlin = "2.0.0"
 kotlinMui = "5.14.12-pre.638"
@@ -19,18 +22,29 @@ kotlinxDatetime = "0.6.0"
 kotlinxHtml = "0.8.0"
 ktor = "3.0.0-wasm2"
 ktor-ktorClientCio = "2.0.0"
+ktor-ktorClientCore = "2.0.0"
+ktor-ktorClientSerialization = "2.0.0"
 ktorClientCio = "3.0.0-wasm2"
 ktorClientCore = "1.6.7"
+ktorClientLogging = "2.0.0"
 ktorClientSerialization = "1.6.7"
+material3WasmJs = "1.6.11"
+navigationCommonWasmJs = "2.7.0-alpha07"
 navigationCompose = "2.7.7"
 runtimeLivedata = "1.6.8"
+runtimeWasmJs = "1.6.11"
+slf4jAndroid = "1.7.36"
 uiToolingPreview = "1.6.8"
 coreI18n = "1.0.0-alpha01"
+uiWasmJs = "1.6.11"
+webCore = "1.4.0"
 
 [libraries]
 androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
 androidx-runtime-livedata = { module = "androidx.compose.runtime:runtime-livedata", version.ref = "runtimeLivedata" }
 androidx-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview", version.ref = "uiToolingPreview" }
+data-table = { module = "com.seanproctor:data-table", version.ref = "dataTable" }
+foundation-wasm-js = { module = "org.jetbrains.compose.foundation:foundation-wasm-js", version.ref = "foundationWasmJs" }
 kotlin-mui = { module = "org.jetbrains.kotlin-wrappers:kotlin-mui", version.ref = "kotlinMui" }
 kotlin-mui-material-js = { module = "org.jetbrains.kotlin-wrappers:kotlin-mui-material-js", version.ref = "kotlinMuiMaterialJs" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -46,19 +60,33 @@ androidx-activity-compose = { module = "androidx.activity:activity-compose", ver
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinxDatetime" }
 kotlinx-html = { module = "org.jetbrains.kotlinx:kotlinx-html", version.ref = "kotlinxHtml" }
 ktor = { group = "io.ktor", name = "ktor", version.ref = "ktor" }
+ktor-client-android = { module = "io.ktor:ktor-client-android", version.ref = "ktor-ktorClientCio" }
 ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktorClientCore" }
 ktor-client-cio-v200 = { module = "io.ktor:ktor-client-cio", version.ref = "ktor-ktorClientCio" }
+ktor-client-cio-v2312 = { module = "io.ktor:ktor-client-cio", version.ref = "io-ktor-ktorClientCio" }
 ktor-client-cio-v300wasm2 = { module = "io.ktor:ktor-client-cio", version.ref = "ktorClientCio" }
 ktor-client-core = { group = "io.ktor", name = "ktor-client-core", version.ref = "ktor" }
 ktor-client-core-v167 = { module = "io.ktor:ktor-client-core", version.ref = "ktorClientCore" }
+ktor-client-core-v200 = { module = "io.ktor:ktor-client-core", version.ref = "ktor-ktorClientCore" }
 ktor-client-json = { group = "io.ktor", name = "ktor-client-json", version.ref = "ktor" }
 ktor-client-logging = { group = "io.ktor", name = "ktor-client-logging", version.ref = "ktor" }
+ktor-client-logging-v200 = { module = "io.ktor:ktor-client-logging", version.ref = "ktorClientLogging" }
 ktor-client-serialization = { group = "io.ktor", name = "ktor-client-serialization", version.ref = "ktor" }
 ktor-client-content-negotiation = { group = "io.ktor", name = "ktor-client-content-negotiation", version.ref = "ktor" }
 ktor-client-serialization-v167 = { module = "io.ktor:ktor-client-serialization", version.ref = "ktorClientSerialization" }
+ktor-client-serialization-v200 = { module = "io.ktor:ktor-client-serialization", version.ref = "ktor-ktorClientSerialization" }
 ktor-serialization-kotlinx-json = { group = "io.ktor", name = "ktor-serialization-kotlinx-json", version.ref = "ktor" }
 ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
 androidx-core-i18n = { group = "androidx.core", name = "core-i18n", version.ref = "coreI18n" }
+material3-wasm-js = { module = "org.jetbrains.compose.material3:material3-wasm-js", version.ref = "material3WasmJs" }
+navigation-common-wasm-js = { module = "org.jetbrains.androidx.navigation:navigation-common-wasm-js", version.ref = "navigationCommonWasmJs" }
+navigation-compose-wasm-js = { module = "org.jetbrains.androidx.navigation:navigation-compose-wasm-js", version.ref = "navigationCommonWasmJs" }
+runtime-wasm-js = { module = "org.jetbrains.compose.runtime:runtime-wasm-js", version.ref = "runtimeWasmJs" }
+slf4j-android = { module = "org.slf4j:slf4j-android", version.ref = "slf4jAndroid" }
+ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "uiWasmJs" }
+ui-util = { module = "org.jetbrains.compose.ui:ui-util", version.ref = "uiWasmJs" }
+ui-wasm-js = { module = "org.jetbrains.compose.ui:ui-wasm-js", version.ref = "uiWasmJs" }
+web-core = { module = "org.jetbrains.compose.web:web-core", version.ref = "webCore" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

@@ -9,6 +9,7 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.jetbrainsCompose)
     alias(libs.plugins.compose.compiler)
+    kotlin("plugin.serialization") version "2.0.0"
 }
 
 repositories {
@@ -39,34 +40,35 @@ kotlin {
         }
         binaries.executable()
     }
-    
+
     androidTarget {
         @OptIn(ExperimentalKotlinGradlePluginApi::class)
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_11)
         }
     }
-    
-    listOf(
-        iosX64(),
-        iosArm64(),
-        iosSimulatorArm64()
-    ).forEach { iosTarget ->
-        iosTarget.binaries.framework {
-            baseName = "ComposeApp"
-            isStatic = true
-        }
-    }
-    
+
     sourceSets {
-        
+
         androidMain.dependencies {
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
-            implementation("io.ktor:ktor-client-okhttp:3.0.0-wasm2")
             implementation(libs.androidx.ui.tooling.preview)
             implementation(libs.androidx.runtime.livedata)
             implementation(libs.androidx.navigation.compose)
+            implementation(libs.ktor.client.okhttp)
+            implementation(libs.ktor.client.core)
+            implementation(libs.ktor.client.core.v200)
+            implementation(libs.ktor.client.cio.v2312)
+            implementation(libs.ktor.client.serialization.v200)
+            implementation(libs.ktor.client.logging.v200)
+            implementation(libs.slf4j.android)
+            implementation(libs.ktor.client.content.negotiation)
+            implementation(libs.ktor.serialization.kotlinx.json)
+            implementation(libs.ktor.client.serialization)
+            implementation(libs.ktor.client.android)
+            implementation(libs.data.table)
+            implementation("network.chaintech:qr-kit:1.0.6")
         }
         commonMain.dependencies {
             implementation(compose.runtime)
@@ -82,10 +84,24 @@ kotlin {
             implementation(libs.ktor.client.serialization)
             implementation(libs.bundles.ktor.common)
             implementation(libs.kotlinx.datetime)
-
         }
 
         wasmJsMain.dependencies {
+            implementation(libs.ui.wasm.js)
+            implementation(libs.navigation.common.wasm.js)
+            implementation(libs.navigation.compose.wasm.js)
+            implementation(libs.ktor.client.core)
+            implementation(libs.ktor.client.content.negotiation)
+            implementation(libs.ktor.serialization.kotlinx.json)
+            implementation(libs.ktor.client.serialization)
+            implementation(libs.bundles.ktor.common)
+            implementation(libs.material3.wasm.js)
+            implementation(npm("@js-joda/timezone", "2.3.0"))
+            implementation("dev.kilua:kilua-bootstrap-wasm-js:0.0.1")
+            implementation(libs.foundation.wasm.js)
+            implementation(libs.material3.wasm.js)
+            runtimeOnly(libs.runtime.wasm.js)
+            implementation(kotlin("stdlib"))
         }
 
     }
@@ -131,6 +147,7 @@ android {
 dependencies {
     implementation(libs.androidx.core.i18n)
     implementation(libs.kotlinx.html)
-    implementation("org.jetbrains.compose.web:web-core:1.0.0")
+    implementation(libs.web.core)
+    implementation(libs.androidx.navigation.compose)
 }
 

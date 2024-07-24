@@ -1,5 +1,6 @@
 package com.ingressou.app
 
+import AndroidSessionManager
 import App
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -10,9 +11,10 @@ import androidx.compose.ui.tooling.preview.Preview
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val sessionManager = AndroidSessionManager(this)
 
         setContent {
-            App()
+            App(sessionManager)
         }
     }
 }
@@ -20,5 +22,7 @@ class MainActivity : ComponentActivity() {
 @Preview
 @Composable
 fun AppAndroidPreview() {
-    App()
+    val context = MainActivity()
+    val sessionManager = AndroidSessionManager(context)
+    App(sessionManager)
 }
